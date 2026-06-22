@@ -10,10 +10,6 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {IPancakeRouter02} from "./interfaces/IPancakeRouter02.sol";
 
-interface IERC20Burnable is IERC20 {
-    function burnFrom(address account, uint256 value) external;
-}
-
 /// @notice Five-tier cultivation scroll NFT with BNB dividends and buyback+LP reserve.
 /// @dev Each address can hold one non-transferable scroll. Rewards are accounted by tier.
 contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
@@ -25,9 +21,9 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
     uint8 public constant MAX_TIER = 5;
     uint16 public constant DIVIDEND_BPS = 8_000;
     uint16 public constant BUYBACK_LP_BPS = 2_000;
+    address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     IERC20 public immutable token;
-    IERC20Burnable private immutable burnableToken;
 
     IPancakeRouter02 public router;
     address public lpReceiver;
@@ -106,7 +102,6 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         if (token_ == address(0) || owner_ == address(0)) revert ZeroAddress();
 
         token = IERC20(token_);
-        burnableToken = IERC20Burnable(token_);
         lpReceiver = owner_;
 
         minHoldings[1] = 100_000 ether;
@@ -171,7 +166,7 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
         _syncRewards(msg.sender, tokenId);
 
-        burnableToken.burnFrom(msg.sender, burnAmount);
+        token.safeTransferFrom(msg.sender, BURN_ADDRESS, burnAmount);
 
         tierSupply[oldTier] -= 1;
         tierSupply[newTier] += 1;

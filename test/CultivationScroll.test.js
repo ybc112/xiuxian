@@ -104,10 +104,11 @@ describe("CultivationScroll", function () {
     expect(await scroll.pendingReward(alice.address)).to.equal(parse("2.4"));
   });
 
-  it("burns the required token amount when upgrading tiers", async function () {
+  it("sends the required token amount to the burn address when upgrading tiers", async function () {
     await scroll.connect(alice).register();
     await token.connect(alice).approve(await scroll.getAddress(), parse("50000"));
-    const totalSupplyBefore = await token.totalSupply();
+    const burnAddress = await scroll.BURN_ADDRESS();
+    const burnBalanceBefore = await token.balanceOf(burnAddress);
 
     await scroll.connect(alice).upgrade();
 
@@ -115,7 +116,7 @@ describe("CultivationScroll", function () {
     expect(await scroll.tierSupply(1)).to.equal(0n);
     expect(await scroll.tierSupply(2)).to.equal(1n);
     expect(await token.balanceOf(alice.address)).to.equal(parse("450000"));
-    expect(await token.totalSupply()).to.equal(totalSupplyBefore - parse("50000"));
+    expect(await token.balanceOf(burnAddress)).to.equal(burnBalanceBefore + parse("50000"));
   });
 
   it("requires enough balance to remain above the next tier threshold after burn", async function () {
