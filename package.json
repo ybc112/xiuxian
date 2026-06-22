@@ -1,0 +1,26 @@
+{
+  "name": "cultivation-scroll-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@openzeppelin/contracts": "5.0.2",
+    "@vitejs/plugin-react": "^6.0.2",
+    "chai": "^4.3.10",
+    "ethers": "^6.13.5",
+    "hardhat": "^2.22.18",
+    "vite": "^8.0.16"
+  },
+  "dependencies": {
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
