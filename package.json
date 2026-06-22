@@ -7,7 +7,9 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deploy:treasury": "hardhat run scripts/deploy-treasury.js",
+    "deploy:scroll": "hardhat run scripts/deploy-scroll-after-four.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
