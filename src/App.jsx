@@ -173,8 +173,9 @@ function App() {
     activeTarget?.minHolding ??
     activeTarget?.staticMinValue ??
     0n;
+  const progressTarget = nextTier ? nextMin + nextBurn : nextMin;
   const progressLabel =
-    profile.tier === 0 ? "登记门槛" : profile.tier >= 5 ? "当前门槛" : "下一阶门槛";
+    profile.tier === 0 ? "登记门槛" : profile.tier >= 5 ? "当前门槛" : "升阶所需持仓";
   const canRegister =
     hasContracts &&
     wallet.account &&
@@ -187,7 +188,7 @@ function App() {
     !wrongNetwork &&
     profile.tier > 0 &&
     profile.tier < 5 &&
-    profile.balance >= nextMin &&
+    profile.balance >= progressTarget &&
     nextBurn > 0n &&
     profile.allowance < nextBurn;
   const canUpgrade =
@@ -196,7 +197,7 @@ function App() {
     !wrongNetwork &&
     profile.tier > 0 &&
     profile.tier < 5 &&
-    profile.balance >= nextMin &&
+    profile.balance >= progressTarget &&
     profile.allowance >= nextBurn;
   const canClaim = hasContracts && wallet.account && !wrongNetwork && profile.pending > 0n;
 
@@ -426,8 +427,8 @@ function App() {
   }, [hasProvider, refresh]);
 
   const holdingProgress = useMemo(
-    () => progressOf(profile.balance, nextMin),
-    [nextMin, profile.balance]
+    () => progressOf(profile.balance, progressTarget),
+    [profile.balance, progressTarget]
   );
 
   return (
@@ -494,7 +495,7 @@ function App() {
               <div className="progress-copy">
                 <span>{progressLabel}</span>
                 <strong>
-                  {formatToken(nextMin, tokenInfo.decimals, 0)} {tokenInfo.symbol}
+                  {formatToken(progressTarget, tokenInfo.decimals, 0)} {tokenInfo.symbol}
                 </strong>
               </div>
               <div className="progress-track" aria-hidden="true">

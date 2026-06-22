@@ -73,6 +73,7 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         string reason
     );
     event RewardClaimed(address indexed user, uint256 amount);
+    event RewardForfeited(address indexed user, uint256 amount, uint8 tier);
     event RouterUpdated(address indexed router);
     event LpReceiverUpdated(address indexed receiver);
     event BaseURIUpdated(string baseURI);
@@ -147,6 +148,7 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         tierSupply[1] += 1;
         activeScrolls += 1;
         rewardDebt[msg.sender] = accRewardPerShare[1];
+        _addTierReward(1, 0);
 
         _safeMint(msg.sender, tokenId);
         emit ScrollRegistered(msg.sender, tokenId, 1);
@@ -164,17 +166,18 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         if (oldTier >= MAX_TIER) revert MaxTierReached();
 
         uint8 newTier = oldTier + 1;
-        _requireMinHolding(msg.sender, newTier);
+        uint256 burnAmount = upgradeBurnCosts[newTier];
+        _requireMinHoldingAfterBurn(msg.sender, newTier, burnAmount);
 
         _syncRewards(msg.sender, tokenId);
 
-        uint256 burnAmount = upgradeBurnCosts[newTier];
         burnableToken.burnFrom(msg.sender, burnAmount);
 
         tierSupply[oldTier] -= 1;
         tierSupply[newTier] += 1;
         tierOfToken[tokenId] = newTier;
         rewardDebt[msg.sender] = accRewardPerShare[newTier];
+        _addTierReward(newTier, 0);
 
         emit ScrollUpgraded(msg.sender, tokenId, oldTier, newTier, burnAmount);
     }
@@ -240,13 +243,14 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         uint256 boughtTokens = token.balanceOf(address(this)) - beforeTokenBalance;
         if (boughtTokens == 0) revert ZeroAmount();
 
+        uint256 tokenLiquidityBalance = token.balanceOf(address(this));
         token.forceApprove(address(router), 0);
-        token.forceApprove(address(router), boughtTokens);
+        token.forceApprove(address(router), tokenLiquidityBalance);
 
         (uint256 tokenAdded, uint256 bnbAdded, uint256 liquidity) =
             router.addLiquidityETH{value: liquidityBNB}(
                 address(token),
-                boughtTokens,
+                tokenLiquidityBalance,
                 minTokenLiquidity,
                 minBNBLiquidity,
                 lpReceiver,
@@ -356,7 +360,7 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
     }
 
     function _addTierReward(uint8 tier, uint256 amount) internal {
-        if (amount == 0) {
+        if (amount == 0 && unallocatedTierRewards[tier] == 0) {
             return;
         }
 
@@ -392,6 +396,28 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         }
     }
 
+    function _requireMinHoldingAfterBurn(
+        address user,
+        uint8 tier,
+        uint256 burnAmount
+    ) internal view {
+        _checkTier(tier);
+        uint256 balance = token.balanceOf(user);
+        uint256 requiredAmount = minHoldings[tier] + burnAmount;
+        if (balance < requiredAmount) {
+            revert MinHoldingNotMet(tier, requiredAmount, balance);
+        }
+    }
+
+    function _pendingRewardUnchecked(
+        address user,
+        uint256 tokenId
+    ) internal view returns (uint256) {
+        uint8 tier = tierOfToken[tokenId];
+        uint256 accumulated = accRewardPerShare[tier] - rewardDebt[user];
+        return storedRewards[user] + (accumulated / ACC_REWARD_PRECISION);
+    }
+
     function _invalidateIfBelowCurrentThreshold(
         address user,
         uint256 tokenId
@@ -401,12 +427,18 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
             return false;
         }
 
+        uint256 forfeitedReward = _pendingRewardUnchecked(user, tokenId);
         storedRewards[user] = 0;
         rewardDebt[user] = 0;
         scrollOf[user] = 0;
         tierOfToken[tokenId] = 0;
         tierSupply[tier] -= 1;
         activeScrolls -= 1;
+
+        if (forfeitedReward > 0) {
+            _addTierReward(tier, forfeitedReward);
+            emit RewardForfeited(user, forfeitedReward, tier);
+        }
 
         _burn(tokenId);
 
