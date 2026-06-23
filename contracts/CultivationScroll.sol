@@ -45,7 +45,7 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
     mapping(address user => uint256 tokenId) public scrollOf;
     mapping(uint256 tokenId => uint8 tier) public tierOfToken;
-    mapping(address user => uint256 rewardDebt) public rewardDebt;
+    mapping(address user => mapping(uint8 tier => uint256)) public rewardDebt;
     mapping(address user => uint256 amount) public storedRewards;
 
     event RewardsDeposited(
@@ -142,7 +142,11 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         tierOfToken[tokenId] = 1;
         tierSupply[1] += 1;
         activeScrolls += 1;
-        rewardDebt[msg.sender] = accRewardPerShare[1];
+        // Set rewardDebt for all tiers so user only earns from tier1 onward
+        for (uint8 t = 1; t <= MAX_TIER; ) {
+            rewardDebt[msg.sender][t] = accRewardPerShare[t];
+            unchecked { ++t; }
+        }
         _addTierReward(1, 0);
 
         _safeMint(msg.sender, tokenId);
@@ -168,11 +172,12 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
         token.safeTransferFrom(msg.sender, BURN_ADDRESS, burnAmount);
 
-        tierSupply[oldTier] -= 1;
+        // Do NOT remove from old tierSupply — user keeps lower-tier dividend rights
         tierSupply[newTier] += 1;
         tierOfToken[tokenId] = newTier;
-        rewardDebt[msg.sender] = accRewardPerShare[newTier];
+        // Process unallocated rewards first, then set rewardDebt so user doesn't earn pre-upgrade rewards
         _addTierReward(newTier, 0);
+        rewardDebt[msg.sender][newTier] = accRewardPerShare[newTier];
 
         emit ScrollUpgraded(msg.sender, tokenId, oldTier, newTier, burnAmount);
     }
@@ -335,8 +340,13 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
             return 0;
         }
 
-        uint256 accumulated = accRewardPerShare[tier] - rewardDebt[user];
-        return storedRewards[user] + (accumulated / ACC_REWARD_PRECISION);
+        uint256 total = storedRewards[user];
+        for (uint8 t = 1; t <= tier; ) {
+            uint256 accumulated = accRewardPerShare[t] - rewardDebt[user][t];
+            total += accumulated / ACC_REWARD_PRECISION;
+            unchecked { ++t; }
+        }
+        return total;
     }
 
     function canClaim(address user) external view returns (bool) {
@@ -399,14 +409,18 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
     function _syncRewards(address user, uint256 tokenId) internal {
         uint8 tier = tierOfToken[tokenId];
-        uint256 currentAcc = accRewardPerShare[tier];
-        uint256 debt = rewardDebt[user];
 
-        if (currentAcc > debt) {
-            storedRewards[user] += (currentAcc - debt) / ACC_REWARD_PRECISION;
+        for (uint8 t = 1; t <= tier; ) {
+            uint256 currentAcc = accRewardPerShare[t];
+            uint256 debt = rewardDebt[user][t];
+
+            if (currentAcc > debt) {
+                storedRewards[user] += (currentAcc - debt) / ACC_REWARD_PRECISION;
+            }
+
+            rewardDebt[user][t] = currentAcc;
+            unchecked { ++t; }
         }
-
-        rewardDebt[user] = currentAcc;
     }
 
     function _requireMinHolding(address user, uint8 tier) internal view {
@@ -436,8 +450,13 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         uint256 tokenId
     ) internal view returns (uint256) {
         uint8 tier = tierOfToken[tokenId];
-        uint256 accumulated = accRewardPerShare[tier] - rewardDebt[user];
-        return storedRewards[user] + (accumulated / ACC_REWARD_PRECISION);
+        uint256 total = storedRewards[user];
+        for (uint8 t = 1; t <= tier; ) {
+            uint256 accumulated = accRewardPerShare[t] - rewardDebt[user][t];
+            total += accumulated / ACC_REWARD_PRECISION;
+            unchecked { ++t; }
+        }
+        return total;
     }
 
     function _invalidateIfBelowCurrentThreshold(
@@ -451,13 +470,19 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
         uint256 forfeitedReward = _pendingRewardUnchecked(user, tokenId);
         storedRewards[user] = 0;
-        rewardDebt[user] = 0;
+        // Clear rewardDebt for all tiers the user was entitled to
+        for (uint8 t = 1; t <= tier; ) {
+            rewardDebt[user][t] = 0;
+            tierSupply[t] -= 1;
+            unchecked { ++t; }
+        }
         scrollOf[user] = 0;
         tierOfToken[tokenId] = 0;
-        tierSupply[tier] -= 1;
         activeScrolls -= 1;
 
         if (forfeitedReward > 0) {
+            // Return forfeited reward to each tier pool proportionally
+            // The user earned from tiers 1..tier, return to those same tiers
             _addTierReward(tier, forfeitedReward);
             emit RewardForfeited(user, forfeitedReward, tier);
         }

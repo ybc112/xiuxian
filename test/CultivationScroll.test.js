@@ -113,7 +113,7 @@ describe("CultivationScroll", function () {
     await scroll.connect(alice).upgrade();
 
     expect(await scroll.tierOf(alice.address)).to.equal(2n);
-    expect(await scroll.tierSupply(1)).to.equal(0n);
+    expect(await scroll.tierSupply(1)).to.equal(1n); // user keeps tier1 dividend rights
     expect(await scroll.tierSupply(2)).to.equal(1n);
     expect(await token.balanceOf(alice.address)).to.equal(parse("450000"));
     expect(await token.balanceOf(burnAddress)).to.equal(burnBalanceBefore + parse("50000"));
@@ -147,7 +147,11 @@ describe("CultivationScroll", function () {
       value: parse("10")
     });
 
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("4.8"));
+    // After upgrade to tier2, alice earns from both tier1 and tier2
+    // tier1: 8 * 30% = 2.4 (new) + 2.4 (stored) = 4.8 from tier1
+    // tier2: 8 * 15% = 1.2 from tier2
+    // total = 6.0
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("6.0"));
   });
 
   it("reaches tier 5 with enough balance and rejects upgrades past max tier", async function () {

@@ -1,0 +1,12 @@
+[
+  {
+    "version": "V3",
+    "timestamp": "2026-06-23T05:46:17.234Z",
+    "token": "0x89c4d86fde0c0f013484d0677f27b79722ba6ede",
+    "scroll": "0x60C55c5b00dAdd42Cbc24dF1a9F0e3915A56585D",
+    "treasury": "0xBEd32b040B452D94d63aCfAe2cC69948446Ff378",
+    "owner": "0xc324Fa989CA3d53641822E9514b97b5Dcdce1fcB",
+    "router": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+    "changes": "Fixed tier dividend: upgraded users keep lower-tier dividend rights"
+  }
+]
