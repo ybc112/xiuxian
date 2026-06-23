@@ -142,12 +142,13 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         tierOfToken[tokenId] = 1;
         tierSupply[1] += 1;
         activeScrolls += 1;
-        // Set rewardDebt for all tiers so user only earns from tier1 onward
+        // Process any unallocated tier1 rewards first
+        _addTierReward(1, 0);
+        // Set rewardDebt AFTER processing so user doesn't get pre-existing unallocated windfall
         for (uint8 t = 1; t <= MAX_TIER; ) {
             rewardDebt[msg.sender][t] = accRewardPerShare[t];
             unchecked { ++t; }
         }
-        _addTierReward(1, 0);
 
         _safeMint(msg.sender, tokenId);
         emit ScrollRegistered(msg.sender, tokenId, 1);
@@ -286,20 +287,32 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
 
         totalDividendReceived += amount;
 
-        uint256 remaining = amount;
-        for (uint8 tier = 1; tier <= 5; ) {
-            uint256 supply = tierSupply[tier];
-            if (supply > 0 && tierWeights[tier] > 0) {
-                uint256 tierAmount = (amount * tierWeights[tier]) / BPS;
-                accRewardPerShare[tier] += (tierAmount * ACC_REWARD_PRECISION) / supply;
-                remaining -= tierAmount;
-            } else {
-                unallocatedTierRewards[tier] += (amount * tierWeights[tier]) / BPS;
+        // Calculate total weight of active tiers
+        uint256 activeWeight;
+        for (uint8 tier = 1; tier <= MAX_TIER; ) {
+            if (tierSupply[tier] > 0) {
+                activeWeight += tierWeights[tier];
             }
             unchecked { ++tier; }
         }
-        if (remaining > 0) {
-            unallocatedTierRewards[1] += remaining;
+
+        if (activeWeight == 0) {
+            unallocatedTierRewards[1] += amount;
+        } else {
+            uint256 remaining = amount;
+            for (uint8 tier = 1; tier <= MAX_TIER; ) {
+                if (tierSupply[tier] > 0) {
+                    uint256 tierAmount;
+                    if (tier == MAX_TIER) {
+                        tierAmount = remaining;
+                    } else {
+                        tierAmount = (amount * tierWeights[tier]) / activeWeight;
+                        remaining -= tierAmount;
+                    }
+                    _addTierReward(tier, tierAmount);
+                }
+                unchecked { ++tier; }
+            }
         }
 
         emit RewardsDeposited(msg.sender, amount, amount, 0);
@@ -376,16 +389,35 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         totalDividendReceived += dividendAmount;
         buybackLpReserve += buybackAmount;
 
-        uint256 remaining = dividendAmount;
-        for (uint8 tier = 1; tier <= MAX_TIER; tier++) {
-            uint256 tierAmount;
-            if (tier == MAX_TIER) {
-                tierAmount = remaining;
-            } else {
-                tierAmount = (dividendAmount * tierWeights[tier]) / BPS;
-                remaining -= tierAmount;
+        // Calculate total weight of active tiers (tiers with members)
+        uint256 activeWeight;
+        for (uint8 tier = 1; tier <= MAX_TIER; ) {
+            if (tierSupply[tier] > 0) {
+                activeWeight += tierWeights[tier];
             }
-            _addTierReward(tier, tierAmount);
+            unchecked { ++tier; }
+        }
+
+        if (activeWeight == 0) {
+            // No members in any tier — put everything in tier1 unallocated
+            unallocatedTierRewards[1] += dividendAmount;
+        } else {
+            // Distribute proportionally to active tiers only
+            // Empty tier shares are redistributed to active tiers
+            uint256 remaining = dividendAmount;
+            for (uint8 tier = 1; tier <= MAX_TIER; tier++) {
+                if (tierSupply[tier] > 0) {
+                    uint256 tierAmount;
+                    if (tier == MAX_TIER) {
+                        tierAmount = remaining;
+                    } else {
+                        tierAmount = (dividendAmount * tierWeights[tier]) / activeWeight;
+                        remaining -= tierAmount;
+                    }
+                    _addTierReward(tier, tierAmount);
+                }
+                // Empty tiers get nothing — their share is redistributed above
+            }
         }
 
         emit RewardsDeposited(msg.sender, amount, dividendAmount, buybackAmount);

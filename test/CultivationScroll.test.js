@@ -74,7 +74,8 @@ describe("CultivationScroll", function () {
 
     expect(await scroll.buybackLpReserve()).to.equal(parse("2"));
     expect(await scroll.totalDividendReceived()).to.equal(parse("8"));
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("2.4"));
+    // Only tier1 has members → tier1 gets 100% of the 8 BNB dividend pool
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("8"));
   });
 
   it("splits tier rewards equally between holders in the same tier", async function () {
@@ -86,22 +87,26 @@ describe("CultivationScroll", function () {
       value: parse("10")
     });
 
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("1.2"));
-    expect(await scroll.pendingReward(bob.address)).to.equal(parse("1.2"));
+    // Only tier1 has members → 8 BNB / 2 holders = 4 BNB each
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("4"));
+    expect(await scroll.pendingReward(bob.address)).to.equal(parse("4"));
   });
 
-  it("keeps empty tier rewards unallocated and activates them when the tier opens", async function () {
+  it("stores unallocated rewards when no one is registered, no windfall for first registrant", async function () {
     await owner.sendTransaction({
       to: await scroll.getAddress(),
       value: parse("10")
     });
 
-    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("2.4"));
+    // No members → all 8 BNB goes to unallocatedTierRewards[1]
+    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("8"));
 
+    // First registrant does NOT get the windfall — rewardDebt set after processing
     await scroll.connect(alice).register();
 
     expect(await scroll.unallocatedTierRewards(1)).to.equal(0n);
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("2.4"));
+    // Alice gets 0 because rewardDebt was set AFTER processing unallocated
+    expect(await scroll.pendingReward(alice.address)).to.equal(0n);
   });
 
   it("sends the required token amount to the burn address when upgrading tiers", async function () {
@@ -137,7 +142,8 @@ describe("CultivationScroll", function () {
       to: await scroll.getAddress(),
       value: parse("10")
     });
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("2.4"));
+    // Only tier1 active → alice gets 100% of 8 BNB
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("8"));
 
     await token.connect(alice).approve(await scroll.getAddress(), parse("50000"));
     await scroll.connect(alice).upgrade();
@@ -147,11 +153,16 @@ describe("CultivationScroll", function () {
       value: parse("10")
     });
 
-    // After upgrade to tier2, alice earns from both tier1 and tier2
-    // tier1: 8 * 30% = 2.4 (new) + 2.4 (stored) = 4.8 from tier1
-    // tier2: 8 * 15% = 1.2 from tier2
-    // total = 6.0
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("6.0"));
+    // After upgrade to tier2: tier1 weight=3000, tier2 weight=1500, activeWeight=4500
+    // tier1: 8 * 3000/4500 = 5.333... BNB
+    // tier2: 8 * 1500/4500 = 2.666... BNB
+    // stored from before upgrade: 8 BNB
+    // new from tier1: 5.333... BNB
+    // new from tier2: 2.666... BNB
+    // total = 8 + 5.333... + 2.666... ≈ 16 BNB (minor rounding from integer division)
+    const p1 = await scroll.pendingReward(alice.address);
+    expect(p1 >= parse("15.999")).to.equal(true);
+    expect(p1 <= parse("16")).to.equal(true);
   });
 
   it("reaches tier 5 with enough balance and rejects upgrades past max tier", async function () {
@@ -177,15 +188,17 @@ describe("CultivationScroll", function () {
       value: parse("10")
     });
 
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("1.2"));
-    expect(await scroll.pendingReward(bob.address)).to.equal(parse("1.2"));
+    // Only tier1 active, 2 holders → 4 BNB each
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("4"));
+    expect(await scroll.pendingReward(bob.address)).to.equal(parse("4"));
 
     await token.connect(alice).transfer(owner.address, parse("401000"));
     await scroll.connect(alice).claim();
 
     expect(await scroll.scrollOf(alice.address)).to.equal(0n);
     expect(await scroll.tierSupply(1)).to.equal(1n);
-    expect(await scroll.pendingReward(bob.address)).to.equal(parse("2.4"));
+    // Bob now gets the forfeited reward from alice: 4 (original) + 4 (forfeited) = 8
+    expect(await scroll.pendingReward(bob.address)).to.equal(parse("8"));
   });
 
   it("clears forfeited rewards into unallocated rewards when no holders remain in the tier", async function () {
@@ -201,7 +214,8 @@ describe("CultivationScroll", function () {
 
     expect(await scroll.scrollOf(alice.address)).to.equal(0n);
     expect(await scroll.tierSupply(1)).to.equal(0n);
-    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("2.4"));
+    // Forfeited 8 BNB goes to unallocatedTierRewards[1]
+    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("8"));
   });
 
   it("reverts claims when there is no reward", async function () {
@@ -224,8 +238,9 @@ describe("CultivationScroll", function () {
     const gasCost = receipt.gasUsed * receipt.gasPrice;
     const afterBalance = await ethers.provider.getBalance(alice.address);
 
-    expect(afterBalance + gasCost - beforeBalance).to.equal(parse("2.4"));
-    expect(await scroll.totalClaimed()).to.equal(parse("2.4"));
+    // Only tier1 active → 8 BNB
+    expect(afterBalance + gasCost - beforeBalance).to.equal(parse("8"));
+    expect(await scroll.totalClaimed()).to.equal(parse("8"));
     expect(await scroll.pendingReward(alice.address)).to.equal(0n);
   });
 
@@ -245,7 +260,8 @@ describe("CultivationScroll", function () {
     expect(await scroll.scrollOf(alice.address)).to.equal(0n);
     expect(await scroll.activeScrolls()).to.equal(0n);
     expect(await scroll.tierSupply(1)).to.equal(0n);
-    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("2.4"));
+    // Forfeited 8 BNB
+    expect(await scroll.unallocatedTierRewards(1)).to.equal(parse("8"));
     await expectRevert(scroll.ownerOf(1));
   });
 
@@ -326,5 +342,65 @@ describe("CultivationScroll", function () {
     );
 
     expect(await scroll.buybackLpReserve()).to.equal(parse("1.25"));
+  });
+
+  it("redistributes empty tier shares to active tiers — 100% distribution", async function () {
+    // Only tier1 has members → tier1 gets 100% of dividend pool
+    await scroll.connect(alice).register();
+
+    await owner.sendTransaction({
+      to: await scroll.getAddress(),
+      value: parse("10")
+    });
+
+    // 8 BNB dividend, only tier1 active → alice gets all 8 BNB
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("8"));
+
+    // No unallocated in any tier
+    for (let t = 1; t <= 5; t++) {
+      expect(await scroll.unallocatedTierRewards(t)).to.equal(0n);
+    }
+  });
+
+  it("distributes proportionally when multiple tiers have members", async function () {
+    await scroll.connect(alice).register();
+    await token.connect(alice).approve(await scroll.getAddress(), parse("50000"));
+    await scroll.connect(alice).upgrade(); // alice = tier2
+
+    // tier1 weight=3000, tier2 weight=1500, activeWeight=4500
+    await owner.sendTransaction({
+      to: await scroll.getAddress(),
+      value: parse("10")
+    });
+
+    // 8 BNB dividend
+    // tier1: 8 * 3000/4500 = 5.333... BNB
+    // tier2: 8 * 1500/4500 = 2.666... BNB
+    // alice earns from both tier1 and tier2 = 5.333... + 2.666... ≈ 8 BNB (minor rounding)
+    const p2 = await scroll.pendingReward(alice.address);
+    expect(p2 >= parse("7.999")).to.equal(true);
+    expect(p2 <= parse("8")).to.equal(true);
+  });
+
+  it("first upgrader does NOT get windfall from previously empty tier", async function () {
+    await scroll.connect(alice).register();
+
+    // Deposit before anyone is in tier2
+    await owner.sendTransaction({
+      to: await scroll.getAddress(),
+      value: parse("10")
+    });
+
+    // With new logic, tier2-5 shares are redistributed to tier1 (active)
+    // So there's nothing in unallocatedTierRewards[2]
+    expect(await scroll.unallocatedTierRewards(2)).to.equal(0n);
+
+    // Alice upgrades to tier2
+    await token.connect(alice).approve(await scroll.getAddress(), parse("50000"));
+    await scroll.connect(alice).upgrade();
+
+    // Alice should NOT get a windfall — she only earns from future deposits in tier2
+    // Her pending should still be the 8 BNB she earned from tier1
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("8"));
   });
 });

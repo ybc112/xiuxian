@@ -79,7 +79,7 @@ describe("CultivationTaxTreasury", function () {
     expect(await treasury.totalRouted()).to.equal(parse("10"));
     expect(await scroll.totalDividendReceived()).to.equal(parse("8"));
     expect(await scroll.buybackLpReserve()).to.equal(parse("2"));
-    expect(await scroll.pendingReward(alice.address)).to.equal(parse("2.4"));
+    expect(await scroll.pendingReward(alice.address)).to.equal(parse("8"));
   });
 
   it("allows partial routing while preserving the remaining treasury balance", async function () {
