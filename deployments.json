@@ -27,5 +27,14 @@
     "treasury": "0x8ba8741F1dFa35365E5DE054E023B4a0a04B9775",
     "owner": "0x7d8A656bE9c3e311ea53d67411028cb3F750cBcE",
     "router": "0x10ED43C718714eb63d5aA57B78B54704E256024E"
+  },
+  {
+    "version": "V3-Latest",
+    "timestamp": "2026-06-23T07:23:54.616Z",
+    "token": "0xcf71ed2806aa0eee52cc72c3699dc3af6c26d5da",
+    "scroll": "0x6a374b3C383F55365E7c181f2DB37EbDAACeB362",
+    "treasury": "0xbe0CF9094ce7744a887217C4B5f62411c7D55EE6",
+    "owner": "0x7d8A656bE9c3e311ea53d67411028cb3F750cBcE",
+    "router": "0x10ED43C718714eb63d5aA57B78B54704E256024E"
   }
 ]
