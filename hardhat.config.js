@@ -41,7 +41,7 @@ module.exports = {
         network: "bsc",
         chainId: 56,
         urls: {
-          apiURL: "https://api.bscscan.com/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=56",
           browserURL: "https://bscscan.com"
         }
       }
