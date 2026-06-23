@@ -7,10 +7,21 @@ const BSCSCAN_API_KEY = "Y9SWA2SK9A2MUEBHGVR5Q4TSHQ3U4R5YES";
 
 const contracts = [
   {
-    name: "CultivationTaxTreasury",
-    address: "0xBEd32b040B452D94d63aCfAe2cC69948446Ff378",
+    name: "CultivationScroll",
+    address: "0x261ca0Ef0aDd811Bc7Fd6669A104A402C6Dcfee1",
     constructorArgs: [
-      "0xc324Fa989CA3d53641822E9514b97b5Dcdce1fcB"
+      "0x89c4d86fde0c0f013484d0677f27b79722ba6ede",
+      "Cultivation Scroll",
+      "SCROLL",
+      "0x9B0c7994F4289Aa247d06A96C4447EB36c13CfBb"
+    ],
+    abi: "constructor(address token_, string memory name_, string memory symbol_, address owner_)"
+  },
+  {
+    name: "CultivationTaxTreasury",
+    address: "0xF10A395eB8Cdb51c88Ca847B7c0427b764d94307",
+    constructorArgs: [
+      "0x9B0c7994F4289Aa247d06A96C4447EB36c13CfBb"
     ],
     abi: "constructor(address owner_)"
   }

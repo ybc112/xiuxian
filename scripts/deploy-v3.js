@@ -1,5 +1,5 @@
 // scripts/deploy-v3.js
-// 一体化部署脚本 - 用 Key4 部署新 Treasury + 新 Scroll + 绑定 + 配置 + 更新前端 + 推送
+// 一体化部署脚本 - 部署新 Treasury + 新 Scroll + 绑定 + 配置 + 更新前端 + 推送
 // 用法: npx hardhat run scripts/deploy-v3.js --network bsc
 
 const { ethers } = require("hardhat");
@@ -23,11 +23,9 @@ async function main() {
   const bal = await ethers.provider.getBalance(deployer.address);
   console.log("余额:", ethers.formatEther(bal), "BNB");
 
-  if (deployer.address.toLowerCase() !== "0xc324fa989ca3d53641822e9514b97b5dcdce1fcb") {
+  if (parseFloat(ethers.formatEther(bal)) < 0.01) {
     console.log("");
-    console.log("⚠️  当前 .env 的 PRIVATE_KEY 不是 Key4!");
-    console.log("⚠️  需要修改 .env 中的 PRIVATE_KEY 为 Key4 才能继续");
-    console.log("⚠️  Key4 = 0xb8448c2873d1199b0ccbc742317866b9c786eb5034cb5cb671d4b018704f844a");
+    console.log("❌ 余额不足，需要至少 0.01 BNB 来部署");
     process.exit(1);
   }
 

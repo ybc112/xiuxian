@@ -111,7 +111,7 @@ const CHAIN_PRESETS = {
 
 const CONFIG = {
   tokenAddress: "0x89c4d86fde0c0f013484d0677f27b79722ba6ede",
-  scrollAddress: "0x60C55c5b00dAdd42Cbc24dF1a9F0e3915A56585D",
+  scrollAddress: "0x261ca0Ef0aDd811Bc7Fd6669A104A402C6Dcfee1",
   chainId: 56,
   chainName: "BNB Chain",
 };
