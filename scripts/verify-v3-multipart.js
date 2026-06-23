@@ -168,16 +168,16 @@ async function main() {
 
   await verifyMultiPart(
     "CultivationScroll",
-    "0x261ca0Ef0aDd811Bc7Fd6669A104A402C6Dcfee1",
-    ["0x89c4d86fde0c0f013484d0677f27b79722ba6ede", "Cultivation Scroll", "SCROLL", "0x9B0c7994F4289Aa247d06A96C4447EB36c13CfBb"]
+    "0xED8114064fe2D74ab2cA109c60db1aB9AF46D3E1",
+    ["0x26dcad18bbcd72923733aae9986b962a786e5a58", "Cultivation Scroll", "SCROLL", "0x7d8A656bE9c3e311ea53d67411028cb3F750cBcE"]
   );
 
   await new Promise(r => setTimeout(r, 3000));
 
   await verifyMultiPart(
     "CultivationTaxTreasury",
-    "0xF10A395eB8Cdb51c88Ca847B7c0427b764d94307",
-    ["0x9B0c7994F4289Aa247d06A96C4447EB36c13CfBb"]
+    "0x8ba8741F1dFa35365E5DE054E023B4a0a04B9775",
+    ["0x7d8A656bE9c3e311ea53d67411028cb3F750cBcE"]
   );
 
   console.log("\n=== 完成 ===");
