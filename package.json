@@ -13,6 +13,7 @@
     "deploy:full": "hardhat run scripts/full-deploy.js",
     "bind:treasury": "hardhat run scripts/bind-treasury-auto.js",
     "route:bnb": "hardhat run scripts/route-bnb.js",
+    "launch": "hardhat run scripts/launch.js",
     "verify:scroll": "hardhat verify --network bsc",
     "verify:treasury": "hardhat verify --network bsc"
   },
