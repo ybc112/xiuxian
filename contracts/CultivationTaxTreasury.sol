@@ -31,11 +31,13 @@ contract CultivationTaxTreasury is Ownable, ReentrancyGuard {
 
     receive() external payable {
         _recordReceived();
+        _autoRoute();
     }
 
     fallback() external payable {
         if (msg.value > 0) {
             _recordReceived();
+            _autoRoute();
         }
     }
 
@@ -70,5 +72,16 @@ contract CultivationTaxTreasury is Ownable, ReentrancyGuard {
         if (msg.value == 0) revert ZeroAmount();
         totalReceived += msg.value;
         emit TaxReceived(msg.sender, msg.value);
+    }
+
+    /// @dev Auto-route to rewardVault if set. Silent fail if not configured yet.
+    function _autoRoute() internal {
+        address vault = rewardVault;
+        if (vault == address(0)) return;
+        uint256 balance = address(this).balance;
+        if (balance == 0) return;
+        totalRouted += balance;
+        IBNBRewardVault(vault).depositRewards{value: balance}();
+        emit TaxRouted(msg.sender, vault, balance);
     }
 }
