@@ -273,6 +273,33 @@ contract CultivationScroll is ERC721, Ownable, ReentrancyGuard {
         emit RouterUpdated(router_);
     }
 
+    /// @notice Sweep buyback reserve into the dividend pool when no DEX is available.
+    function sweepBuybackToDividends() external onlyOwner nonReentrant {
+        uint256 amount = buybackLpReserve;
+        if (amount == 0) revert ZeroAmount();
+        buybackLpReserve = 0;
+
+        totalDividendReceived += amount;
+
+        uint256 remaining = amount;
+        for (uint8 tier = 1; tier <= 5; ) {
+            uint256 supply = tierSupply[tier];
+            if (supply > 0 && tierWeights[tier] > 0) {
+                uint256 tierAmount = (amount * tierWeights[tier]) / BPS;
+                accRewardPerShare[tier] += (tierAmount * ACC_REWARD_PRECISION) / supply;
+                remaining -= tierAmount;
+            } else {
+                unallocatedTierRewards[tier] += (amount * tierWeights[tier]) / BPS;
+            }
+            unchecked { ++tier; }
+        }
+        if (remaining > 0) {
+            unallocatedTierRewards[1] += remaining;
+        }
+
+        emit RewardsDeposited(msg.sender, amount, amount, 0);
+    }
+
     function setLpReceiver(address receiver) external onlyOwner {
         if (receiver == address(0)) revert ZeroAddress();
         lpReceiver = receiver;
