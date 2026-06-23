@@ -110,10 +110,10 @@ const CHAIN_PRESETS = {
 };
 
 const CONFIG = {
-  tokenAddress: import.meta.env.VITE_TOKEN_ADDRESS || "",
-  scrollAddress: import.meta.env.VITE_SCROLL_ADDRESS || "",
-  chainId: Number(import.meta.env.VITE_CHAIN_ID || 56),
-  chainName: import.meta.env.VITE_CHAIN_NAME || "BNB Chain",
+  tokenAddress: "0x89c4d86fde0c0f013484d0677f27b79722ba6ede",
+  scrollAddress: "0xDbF26770983a41c8e4e126915D35f853e7A0CF90",
+  chainId: 56,
+  chainName: "BNB Chain",
 };
 
 function isConfiguredAddress(value) {

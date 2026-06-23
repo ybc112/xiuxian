@@ -9,13 +9,21 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:treasury": "hardhat run scripts/deploy-treasury.js",
-    "deploy:scroll": "hardhat run scripts/deploy-scroll-after-four.js"
+    "deploy:scroll": "hardhat run scripts/deploy-scroll-after-four.js",
+    "deploy:full": "hardhat run scripts/full-deploy.js",
+    "bind:treasury": "hardhat run scripts/bind-treasury-auto.js",
+    "route:bnb": "hardhat run scripts/route-bnb.js",
+    "verify:scroll": "hardhat verify --network bsc",
+    "verify:treasury": "hardhat verify --network bsc"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-verify": "^2.1.3",
     "@openzeppelin/contracts": "5.0.2",
     "@vitejs/plugin-react": "^6.0.2",
+    "axios": "^1.18.1",
     "chai": "^4.3.10",
+    "dotenv": "^17.4.2",
     "ethers": "^6.13.5",
     "hardhat": "^2.22.18",
     "vite": "^8.0.16"
